@@ -1,0 +1,4 @@
+*-backups
+\#auto_saved_files#
+.DS_Store
+_autosave*
