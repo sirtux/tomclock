@@ -3697,7 +3697,7 @@
     (property "Value" "Boot/Reset" (at 134.62 177.8 0)
       (effects (font (size 1.27 1.27)))
     )
-    (property "Footprint" "" (at 133.35 180.34 0)
+    (property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_2x02_P2.54mm_Vertical" (at 133.35 180.34 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (property "Datasheet" "~" (at 133.35 180.34 0)
