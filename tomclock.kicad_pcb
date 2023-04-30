@@ -11295,10 +11295,13 @@
 
   (gr_rect (start 20.75 13.5) (end 220.75 213.5)
     (stroke (width 0.2) (type solid)) (fill none) (layer "Edge.Cuts") (tstamp 2f4cad51-9f15-4317-a3fa-e772f6c494f1))
+  (gr_text "GND\nVCC\nSDA\nSCL\nNC" (at 134.35 163.1) (layer "B.SilkS") (tstamp cf1917db-a967-4ddd-8f49-b1af46c911f3)
+    (effects (font (size 1.6 1.6) (thickness 0.15)) (justify left bottom mirror))
+  )
   (gr_text "JLCJLCJLCJLC" (at 102.5 158) (layer "F.SilkS") (tstamp c9e3f102-47e6-4e54-ac5c-6f81db9da300)
     (effects (font (size 1 1) (thickness 0.15)))
   )
-  (gr_text "TomClock Rev A1" (at 207 209.25) (layer "F.SilkS") (tstamp f22592e9-cb65-4b58-b400-479efee5bff3)
+  (gr_text "TomClock Rev A2" (at 207 209.25) (layer "F.SilkS") (tstamp f22592e9-cb65-4b58-b400-479efee5bff3)
     (effects (font (size 1 1) (thickness 0.15)))
   )
 
