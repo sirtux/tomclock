@@ -2,6 +2,7 @@ import ws2812b
 import time
 import machine
 from ds1307 import DS1307
+import posix_tz
 
 # LED Mapping
 digit_to_led = {
@@ -19,15 +20,18 @@ digit_to_led = {
     "colon": [7, 8],
 }
 
+# Time Zone
+posix_tz.set_tz('CEST-1CET,M3.2.0/2:00:00,M11.1.0/2:00:00')
+
 # Set up the ws2812 PIO engines
 ring = ws2812b.ws2812b(60, 0, 0)
 digits = ws2812b.ws2812b(68, 1, 1)
 
 # Color definition
 
-color_r = 255
-color_g = 5
-color_b = 5
+color_r = 0
+color_g = 10
+color_b = 0
 
 ring_color_r = 10
 ring_color_g = 0
@@ -40,51 +44,10 @@ i2c_rtc = DS1307(i2c_bus_rtc)
 # Init the internal RTC
 rtc = machine.RTC()
 
-# key is year, value 1 is summertime day in march, value 2 is wintertime day in october
-switchover_dates = {
-    2023: (26, 29),
-    2024: (31, 27),
-    2025: (30, 26),
-    2026: (29, 25),
-    2027: (28, 31),
-    2028: (26, 29),
-    2029: (25, 28),
-    2030: (31, 27),
-}
-
-wintertime_offset = 1
-summertime_offset = 2
-
-
 def copy_rtc_to_internal_rtc_with_tz():
     print("RTC Sync initiated")
     current_datetime = i2c_rtc.datetime()
-    UTC_OFFSET = wintertime_offset
-    # All is ugly, as we don't have TZ Info in micropython.
-    # We do not care about the exact time, but only the date - so we will have the
-    # TZ flipover at 01:00 clock (This is the time we reload the data)
 
-    # Case 1: We are in May to Sept:
-    if current_datetime[1] >= 5 and current_datetime[1] <= 9:
-        UTC_OFFSET = summertime_offset
-    # Case 2: We are in April and on the switch_over date or later:
-    if (
-        current_datetime[1] == 4
-        and current_datetime[2] >= switchover_dates[current_datetime[0]][0]
-    ):
-        UTC_OFFSET = summertime_offset
-    # Case 3: We are in October, but before switchover_date
-    if (
-        current_datetime[1] == 10
-        and current_datetime[2] < switchover_dates[current_datetime[0]][1]
-    ):
-        UTC_OFFSET = summertime_offset
-
-    # We don't know how long this took, so let's get the RTC time again
-    current_datetime = list(i2c_rtc.datetime())
-    current_datetime[4] = current_datetime[4] + UTC_OFFSET
-
-    print()
     tuple_for_onboard_rtc = (
         current_datetime[0],
         current_datetime[1],
@@ -95,10 +58,11 @@ def copy_rtc_to_internal_rtc_with_tz():
         current_datetime[6],
         0,
     )
-    print(tuple_for_onboard_rtc)
-
     rtc.datetime(tuple_for_onboard_rtc)
-
+    posix_tz.set_tz('CEST-1CET,M3.2.0/2:00:00,M11.1.0/2:00:00')
+    local_datetime = posix_tz.localtime()
+    print(posix_tz.localtime())
+    print(f"New UTC Date: {local_datetime[0]}-{local_datetime[1]}-{local_datetime[2]} {local_datetime[3]}:{local_datetime[4]}:{local_datetime[5]}")
 
 def render_single_digit(digits, digit, offset, colon, dot, color_r, color_g, color_b):
     for led in digit_to_led[digit]:
@@ -176,35 +140,36 @@ def render_and_display_seconds_ring(ring, seconds, color_r, color_g, color_b):
 
 
 def render(_):
+    local_datetime = posix_tz.localtime()
     try:
-        if rtc.datetime()[6] == 0 and rtc.datetime()[5] == 2 and rtc_available:
-            rtc_available = False
+        # At every hour at minute 0, we resync the external RTC to the internal RTC
+        if local_datetime[4] == 0:
             try:
                 copy_rtc_to_internal_rtc_with_tz()
             except:
                 machine.reset()
 
-        if rtc.datetime()[6] == 10:
-            rtc_available = True
-
+        # We want to display the time for 15s, then 5s with the date
         if (
-            rtc.datetime()[6] > 14
-            and rtc.datetime()[6] < 30
-            or rtc.datetime()[6] > 45
-            and rtc.datetime()[6] < 59
+            # Block 0: 0s up to 15s
+            0 <= local_datetime[5] <= 15 or
+            # Block 1: 21s to 35s
+            21 <= local_datetime[5] <= 35 or
+            # Block 2: 40s to 55s
+            40 <= local_datetime[5] <= 55
         ):
             render_and_display_time(
                 digits,
-                rtc.datetime()[4],
-                rtc.datetime()[5],
-                rtc.datetime()[6],
+                local_datetime[3],
+                local_datetime[4],
+                local_datetime[5],
                 color_r,
                 color_g,
                 color_b,
             )
         else:
             render_and_display_date(
-                digits, rtc.datetime()[2], rtc.datetime()[1], color_r, color_g, color_b
+                digits, local_datetime[2], local_datetime[1], color_r, color_g, color_b
             )
         render_and_display_seconds_ring(
             ring, rtc.datetime()[6], color_r, color_g, color_b
@@ -219,6 +184,10 @@ def get_new_time():
         'To set the clock, run TZ=UTC date +"%Y, %m, %d, 0, %H, %M, %S" > /dev/$yourserialport\n'
     )
     timeinput = input().split(",")
+
+    if timeinput[0] == "x":
+        raise Exception()
+
     timetuple = tuple(
         [
             int(timeinput[0]),
@@ -245,6 +214,7 @@ def get_new_time():
 
 
 if __name__ == "__main__":
+
     try:
         copy_rtc_to_internal_rtc_with_tz()
     except:
